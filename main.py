@@ -46,6 +46,9 @@ test_data = Dataset_maker(test_data)
 
 
 class EarlyStopper(object):
+    """
+    Early stopping function for training without imporving quality
+    """
 
     def __init__(self, num_trials, save_path):
         self.num_trials = num_trials
@@ -69,6 +72,8 @@ class EarlyStopper(object):
 def train(model, optimizer, data_loader, criterion, device, log_interval=100):
     """
     Traning process
+    device: cpu or cuda
+    criterion - function to minimize
     """
     print("Training...")
     pos_mas = []
@@ -105,7 +110,9 @@ def train(model, optimizer, data_loader, criterion, device, log_interval=100):
             
 def train2(model, optimizer, data_loader, criterion, device, log_interval=100, loss_type = "triangle"):
     """
-    Traning process
+    Traning process improved version of previous one for traning hyperbolic models
+    device: cpu or cuda
+    criterion - function to minimize
     """
     print("Training...")
     pos_mas = []
@@ -153,6 +160,11 @@ def train2(model, optimizer, data_loader, criterion, device, log_interval=100, l
 
 
 def test(model, data_loader, device, num_users, num_items):
+    """
+    Testing the model
+    num_users - total number of users in test set
+    num_items - total number of items in the catalogue
+    """
     #print("Testing...")
     model.eval()
     targets, predicts = list(), list()
@@ -176,9 +188,9 @@ def test(model, data_loader, device, num_users, num_items):
     metr = metrics(targets, predicts)
     return end_time - strat_time, 0, 0, metr["ndcg@1"],metr["ndcg@5"], metr["ndcg@10"], metr["hits@1"], metr["hits@5"],metr["hits@10"], metr["cov"]
 
-def negative_sampling(dataset, r = 1):
+def negative_sampling(dataset):
     """
-    Negative sampler for traning
+    Negative sampler from the dataset for traning
     """
     n = dataset[:][0].shape[0]
     nb_user = int(max(dataset[:][0][:,0]))
@@ -205,6 +217,8 @@ def negative_sampling(dataset, r = 1):
 def test_all_sampling(dataset, n_items, n_users):
     """
     Sample all negative examples for computing metric
+    n_items - total number of items in catalogue
+    n_users total number of users or number of users in train/test set
     """
     n = dataset[:][0].shape[0]
     user_set = set(dataset[:][0][:,0])
@@ -228,6 +242,8 @@ def test_all_sampling(dataset, n_items, n_users):
 def get_model(name, dataset, embed_dim):
     """
     Hyperparameters are empirically determined, not opitmized.
+    name - name of model in ['fm', 'lfm', 'tfm', 'hyp']
+    embed_dim - dimension of model embeddings. Embedding dimension for users and items are similar.
     """
     field_dims = dataset.field_dims
     print(field_dims)
@@ -245,6 +261,10 @@ def get_model(name, dataset, embed_dim):
 def plot_embed(E_u, E_i, ord_u, ord_i):
     """
     Embedding visualisation
+    E_u - matrix of user embeddings
+    E_i - matrix of item embeddings
+    ord_u - list of users
+    ord_i - list of items
     """
     mas_u = []
     mas_i = []
@@ -318,6 +338,15 @@ def experiment2(dataset,
          embed_dim):
     '''
     The main experimental setup.
+    train_data - train dataset
+    test_data - test dataset
+    val_data - validation dataset
+    model_name - name ofmodel in the ['fm', 'lfm', 'tfm', 'hyp']
+    epoch - number of epochs
+    learning_rate - learning rate for the optimuzer
+    bathc_size - batch size
+    Weight_decay - weight decay for optimizer
+    embed_dim - dimensionality of users and items embeddinhs
     '''
     print("Dataset/Model preparing...")
     av_time = []
