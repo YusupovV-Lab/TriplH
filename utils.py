@@ -124,13 +124,7 @@ def rr(
     topn = None
 ) -> float:
     '''
-    Вычисляет Reciprocal Rank (RR) для одного пользователя.
-    На вход:
-        gt_items: Список релевантных айтемов (ground truth).
-        predictions: Список предсказанных айтемов.
-        topn: Количество первых предсказаний для оценки (если None, используется длина gt_items).
-    На выход:
-        Значение метрики RR.
+    Reciprocal Rank (RR) metric
     '''
     if topn is None:
         topn = len(predictions)
@@ -150,13 +144,7 @@ def hr(
     topn = None
 ) -> float:
     '''
-    Вычисляет Hit Rate (HR) для одного пользователя.
-    На вход:
-        gt_items: Список релевантных айтемов (ground truth).
-        predictions: Список предсказанных айтемов.
-        topn: Количество первых предсказаний для оценки (если None, используется длина gt_items).
-    На выход:
-        Значение метрики HR.
+    Hit Rate (HR) metric
     '''
     if topn is None:
         topn = len(predictions)
@@ -172,13 +160,7 @@ def ndcg(
     topn=None
 ) -> float:
     '''
-    Вычисляет Normalized Discounted Cumulative Gain (NDCG) для одного пользователя.
-    На вход:
-        gt_items: Список релевантных айтемов (ground truth).
-        predictions: Список предсказанных айтемов.
-        topn: Количество первых предсказаний для оценки (если None, используется длина gt_items).
-    На выход:
-        Значение метрики NDCG.
+    Normalized Discounted Cumulative Gain (NDCG) metric
     '''
     if topn is None:
         topn = len(predictions)
@@ -186,21 +168,15 @@ def ndcg(
     predictions = np.array(predictions[:topn])
     gt_items = set(gt_items)
     
-    # Бинарная релевантность (1 - релевантный, 0 - нерелевантный)
     relevance = np.isin(predictions, list(gt_items)).astype(int)
     
-    # Вычисляем DCG
     dcg = 0.0
     for i, rel in enumerate(relevance, 1):
         dcg += rel / np.log2(i + 1)
-    
-    # Вычисляем идеальный DCG (IDCG)
     ideal_relevance = np.ones(min(len(gt_items), topn))
     idcg = 0.0
     for i, rel in enumerate(ideal_relevance, 1):
         idcg += rel / np.log2(i + 1)
-    
-    # Нормализуем DCG
     ndcg_score = dcg / idcg if idcg > 0 else 0.0
     
     return ndcg_score
@@ -259,6 +235,9 @@ def convert(data, target, prediction):
 
 
 def sampler_neg(field_embs, items_emb, n):
+    """
+    Negative sampler
+    """
     matrix = torch.mm(torch.sqrt(1 + torch.sum(field_embs ** 2, dim = 1)).unsqueeze(1), torch.sqrt(1 + torch.sum(items_emb ** 2, dim = 1)).unsqueeze(0)) - torch.mm(field_embs, items_emb.transpose(0, 1))
     n_items = items_emb.shape[0]
     z = -torch.log(-torch.log(torch.rand_like(matrix)))

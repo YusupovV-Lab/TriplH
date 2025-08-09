@@ -2,29 +2,14 @@ from utils import *
 from models import *
 import matplotlib.pyplot as plt
 
+#Dataset preparation
+
 dataset_path = "ratings.dat"
 dataset = MovieLens1MDataset(dataset_path)
 user_num = dataset.field_dims[0]
 item_num = dataset.field_dims[1]
 columns_name=['user_id','item_id','rating', 'timestamp']
 df = pd.DataFrame(dataset.data, columns = columns_name)
-
-# Commented code for Amazon datasets
-
-# df = getDF('reviews_Sports_and_Outdoors_5.json.gz')
-# new_df = df.copy()
-# new_df.columns = ['user_id', 'item_id', 'rating', 'timestamp']
-# new_df['rating'] = 1
-# new_df.head(5)
-
-# new_df['user_id'], unique_user_ids = pd.factorize(new_df['user_id'])
-
-# new_df['item_id'], unique_item_ids = pd.factorize(new_df['item_id'])
-# new_df['user_id'] += 1
-# new_df['item_id'] += 1
-# new_df.head(5)
-
-# df = new_df
 
 user_num = len(df['user_id'].unique())
 item_num = len(df['item_id'].unique())
@@ -82,7 +67,10 @@ class EarlyStopper(object):
 
         
 def train(model, optimizer, data_loader, criterion, device, log_interval=100):
-    #print("Training...")
+    """
+    Traning process
+    """
+    print("Training...")
     pos_mas = []
     neg_mas = []
     it_mas = []
@@ -115,8 +103,11 @@ def train(model, optimizer, data_loader, criterion, device, log_interval=100):
     return pos_mas, neg_mas, it_mas
             
             
-def train2(model, optimizer, data_loader, criterion, device, log_interval=100):
-    #print("Training...")
+def train2(model, optimizer, data_loader, criterion, device, log_interval=100, loss_type = "triangle"):
+    """
+    Traning process
+    """
+    print("Training...")
     pos_mas = []
     neg_mas = []
     it_mas = []
@@ -139,15 +130,15 @@ def train2(model, optimizer, data_loader, criterion, device, log_interval=100):
         b = model.b
         c = model.c
         d = model.d
-        
-        loss = bpr_loss((a *  y1 + b), a * y2 + b) #+ 0.001 * torch.linalg.norm(model.embedding.embedding.weight) ** 2 #+ 0.000001 * torch.sum(torch.linalg.norm(popular_vect.unsqueeze(1).to(device) * model.embedding.embedding.weight[user_num:], dim = 1) ** 2)
-        #print(model.embedding.embedding.weight[user_num:].shape)
-        
-        #loss = triangle_loss(a * y1, (a * y2), c * y3 + d) + 0.0001 * torch.linalg.norm(y_it) ** 2 #+ 0.0000001 * torch.linalg.norm(popular_vect.unsqueeze(1).to(device) * model.embedding.embedding.weight[user_num:]) ** 2 #+ 0.002 * torch.linalg.norm(y3) ** 2 #+ 
-        #loss = tetrahedron_loss(y_pos, y_neg, y_it, emb_pos, emb_neg, emb_it, a, b, c, d) + 0.001 * torch.linalg.norm(y_it) ** 2 #+ 0.00001 * torch.sum(torch.linalg.norm(popular_vect.unsqueeze(1).to(device) * model.embedding.embedding.weight[user_num:], dim = 1))
-        # pos_mas += [torch.linalg.norm(y_pos - emb_pos[:, 0] *  emb_pos[:, 1]).item()]
-        # neg_mas += [torch.linalg.norm(y_neg- emb_neg[:, 0] *  emb_neg[:, 1]).item()]
-        # it_mas += [torch.linalg.norm(y_it - emb_it[:, 0] *  emb_it[:, 1]).item()]
+        if loss_type == "bpr":
+            loss = bpr_loss((a *  y1 + b), a * y2 + b)
+        elif loss_type == "triangle":
+            loss = triangle_loss(a * y1, (a * y2), c * y3 + d) + 0.0001 * torch.linalg.norm(y_it) ** 2
+        else:
+            loss = tetrahedron_loss(y_pos, y_neg, y_it, emb_pos, emb_neg, emb_it, a, b, c, d) + 0.001 * torch.linalg.norm(y_it) ** 2 
+        pos_mas += [torch.linalg.norm(y_pos - emb_pos[:, 0] *  emb_pos[:, 1]).item()]
+        neg_mas += [torch.linalg.norm(y_neg- emb_neg[:, 0] *  emb_neg[:, 1]).item()]
+        it_mas += [torch.linalg.norm(y_it - emb_it[:, 0] *  emb_it[:, 1]).item()]
         pos_mas += [torch.linalg.norm(y_pos).item()]
         neg_mas += [torch.linalg.norm(y_neg).item()]
         it_mas += [torch.linalg.norm(y_it).item()]
@@ -172,7 +163,6 @@ def test(model, data_loader, device, num_users, num_items):
             fields, target = fields.to(device), target.to(device)
 
             y = torch.sigmoid(model(fields)[0].squeeze(1))
-            #y = model(fields)
 
             targets.extend(target.tolist())
             predicts.extend(y.tolist())
@@ -183,17 +173,13 @@ def test(model, data_loader, device, num_users, num_items):
     predicts, targets = convert(data, targets, predicts)
     max_indices = {key: np.argmax(value) for key, value in predicts.items()}
     max_inds = []
-    #for u in tqdm(max_indices):
-     #   a = max_indices[u]
-      #  max_inds += [item_positions[a]]
-    #index_counts = Counter(max_inds)
-
-    #sorted_indices = index_counts.most_common()
-
     metr = metrics(targets, predicts)
     return end_time - strat_time, 0, 0, metr["ndcg@1"],metr["ndcg@5"], metr["ndcg@10"], metr["hits@1"], metr["hits@5"],metr["hits@10"], metr["cov"]
 
 def negative_sampling(dataset, r = 1):
+    """
+    Negative sampler for traning
+    """
     n = dataset[:][0].shape[0]
     nb_user = int(max(dataset[:][0][:,0]))
     nb_item = int(max(dataset[:][0][:,1]))
@@ -217,6 +203,9 @@ def negative_sampling(dataset, r = 1):
     return dataset
 
 def test_all_sampling(dataset, n_items, n_users):
+    """
+    Sample all negative examples for computing metric
+    """
     n = dataset[:][0].shape[0]
     user_set = set(dataset[:][0][:,0])
     mas = []
@@ -254,6 +243,9 @@ def get_model(name, dataset, embed_dim):
         print("No such name!")
 
 def plot_embed(E_u, E_i, ord_u, ord_i):
+    """
+    Embedding visualisation
+    """
     mas_u = []
     mas_i = []
     for u in ord_u:
@@ -274,7 +266,6 @@ def plot_embed(E_u, E_i, ord_u, ord_i):
     ax1.legend()
     ax1.grid()
 
-    # Строим второй график
     ax2.plot(mas_i, color='red', label='items')
     ax2.set_xlabel('item')
     ax2.set_ylabel('norm')
@@ -282,7 +273,6 @@ def plot_embed(E_u, E_i, ord_u, ord_i):
     ax2.legend()
     ax2.grid()
 
-    # Показываем графики
     plt.tight_layout()
     plt.show()
     
@@ -290,6 +280,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def distance_count(E, tresholds):
+    """
+    Computing distance between two points in the hyperbolic space
+    """
     mas = [0] * len(tresholds)
     for i in tqdm(range(E.shape[0])):
         d = torch.linalg.norm(E[i])
@@ -301,16 +294,12 @@ def distance_count(E, tresholds):
 
 
     x_indices = np.arange(len(mas))
-
-    # Построение столбчатой диаграммы
     plt.figure(figsize=(10, 6))
     plt.bar(x_indices, mas, alpha=0.7, edgecolor='black')
-
-    # Настройка графика
     plt.title('Bar Chart Example', fontsize=20)
     plt.xlabel('Names', fontsize=15)
     plt.ylabel('Values', fontsize=15)
-    plt.xticks(x_indices, tresholds)  # Установка имен по оси X
+    plt.xticks(x_indices, tresholds)
     plt.grid(axis='y', alpha=0.75)
     plt.savefig('hypbpr_emb_diagram_16.pdf')
     plt.show()
@@ -327,18 +316,19 @@ def experiment2(dataset,
          device,
          save_dir,
          embed_dim):
+    '''
+    The main experimental setup.
+    '''
     print("Dataset/Model preparing...")
     av_time = []
     nb_users = user_num
     nb_items = item_num
     #test_data = test_all_sampling(test_data, nb_items)
     
-    
     train_data_loader = DataLoader(train_data, batch_size=batch_size, num_workers=8)
     val_data_loader = DataLoader(val_data, batch_size=batch_size, num_workers=8)
     test_data_loader = DataLoader(test_data, batch_size=batch_size, num_workers=8)
     model = get_model(model_name, dataset, embed_dim)
-    # print("Embedding shape: ", model.embedding.embedding.weight)
     model.to(device)
     criterion = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate, weight_decay=weight_decay)

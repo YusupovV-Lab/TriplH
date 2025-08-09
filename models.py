@@ -2,14 +2,16 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-def arcosh(x, eps=1e-5):  # pragma: no cover
+def arcosh(x, eps=1e-5):
     x = x.clamp(-1 + eps, 1 - eps)
     return torch.log(x + torch.sqrt(1 + x) * torch.sqrt(x - 1))
 
 
 class FeaturesLinear(torch.nn.Module):
-
     def __init__(self, field_dims, output_dim=1):
+         """
+         Linear Feature layer  
+         """
         super().__init__()
         print(sum(field_dims))
         self.fc = torch.nn.Embedding(sum(field_dims), output_dim)
@@ -34,6 +36,9 @@ class FeaturesLinear(torch.nn.Module):
 class FeaturesEmbedding(torch.nn.Module):
 
     def __init__(self, field_dims, embed_dim):
+        """
+        Embedding Layer
+        """
         super().__init__()
         self.embedding = torch.nn.Embedding(sum(field_dims), embed_dim)
         self.offsets = np.array((0, *np.cumsum(field_dims)[:-1]))
@@ -60,6 +65,9 @@ class FeaturesEmbedding(torch.nn.Module):
 class FactorizationMachine(torch.nn.Module):
 
     def __init__(self, reduce_sum=True):
+        """
+        Factorization Machine layer (Rendle et. al. 2010)
+        """
         super().__init__()
         self.reduce_sum = reduce_sum
 
@@ -91,6 +99,9 @@ class PoincareDistance(torch.nn.Module):
 class MultiLayerPerceptron(torch.nn.Module):
 
     def __init__(self, input_dim, embed_dims, dropout, output_layer=True):
+        """
+        MLP (Multi Layer Perceptron) model
+        """
         super().__init__()
         layers = list()
         for embed_dim in embed_dims:
@@ -288,21 +299,28 @@ class TetrahedronFactorizationMachineModel(torch.nn.Module):
 
 
 def bpr_loss(pos, neg):
-        
+    """
+    BPR Loss
+    """
     loss = -torch.mean(torch.log(torch.nn.functional.sigmoid(pos - neg)))    
     return loss
 
 def triangle_loss(pos, neg, it):
+    """
+    Trianglr loss
+    """
     loss = -torch.mean(torch.log(torch.nn.functional.sigmoid(pos - (neg + it))))    
     return loss
 
 def tetrahedron_loss(pos, neg, it, pos_emb, neg_emb, it_emb, a, b, c, d):
+    """
+    Tetrahedron loss
+    """
     pos_zeros = get_zeroth_components(pos_emb)
     neg_zeros = get_zeroth_components(neg_emb)
     u_0 = pos_zeros[:,0]
     v_p = pos_zeros[:,1]
     v_n = neg_zeros[:,1]
-    #loss = torch.div((-2 + u_0 * v_p - pos + v_n) -  (-2 + u_0 * v_n - neg + v_p) + (-2 + v_p * v_n - it + u_0), u_0 * v_p + u_0 * v_n + v_p * v_n)
     loss = torch.div(a * (1 + u_0 * v_p - pos  - v_n) - a * (1 + u_0 * v_n - neg - v_p) - c * (1 + v_p * v_n - it - v_p - v_n - u_0) + d, u_0 * v_p + u_0 * v_n + v_p * v_n)
     
     loss = -torch.mean(torch.log(torch.nn.functional.sigmoid(loss)))
