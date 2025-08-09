@@ -10,7 +10,9 @@ def arcosh(x, eps=1e-5):
 class FeaturesLinear(torch.nn.Module):
     def __init__(self, field_dims, output_dim=1):
          """
-         Linear Feature layer  
+         Linear Feature layer
+         fields_dim - input dimesion
+         output_dim - output dimension
          """
         super().__init__()
         print(sum(field_dims))
@@ -38,6 +40,8 @@ class FeaturesEmbedding(torch.nn.Module):
     def __init__(self, field_dims, embed_dim):
         """
         Embedding Layer
+        fields_dim - input dimesion
+        embed_dim - embedding dimensionality
         """
         super().__init__()
         self.embedding = torch.nn.Embedding(sum(field_dims), embed_dim)
@@ -67,6 +71,7 @@ class FactorizationMachine(torch.nn.Module):
     def __init__(self, reduce_sum=True):
         """
         Factorization Machine layer (Rendle et. al. 2010)
+        reduce_sum - reduce the dimension to 1 along the axis of dimension
         """
         super().__init__()
         self.reduce_sum = reduce_sum
@@ -167,6 +172,10 @@ class LorentzFactorizationMachineModel(torch.nn.Module):
     """
 
     def __init__(self, field_dims, embed_dim):
+        """
+        fields_dim - input dimesion
+        output_dim - output dimension
+        """
         super().__init__()
         self.embedding = FeaturesEmbedding(field_dims, embed_dim)
         self.linear = FeaturesLinear(field_dims)
@@ -194,6 +203,7 @@ class LorentzFactorizationMachineModel(torch.nn.Module):
     def get_zeroth_components(self, feature_emb):
         '''
         compute the 0th component
+        feature_emb - emnedding to compute x_0
         '''
         sum_of_square = torch.sum(feature_emb ** 2, dim=-1) # batch * field
         zeroth_components = torch.sqrt(sum_of_square + 1) # beta = 1
@@ -204,6 +214,7 @@ class LorentzFactorizationMachineModel(torch.nn.Module):
         T(u,v) = (1 - <u, v>L - u0 - v0) / (u0 * v0)
                = (1 + u0 * v0 - inner_product - u0 - v0) / (u0 * v0)
                = 1 + (1 - inner_product - u0 - v0) / (u0 * v0)
+ 
         '''
         num_fields = zeroth_components.size(1)
         p, q = zip(*list(combinations(range(num_fields), 2)))
@@ -221,6 +232,10 @@ class HyperBPRModel(torch.nn.Module):
     """
 
     def __init__(self, field_dims, embed_dim):
+        """
+        fields_dim - input dimesion
+        embed_dim - embedding dimension
+        """
         super().__init__()
         self.embedding = FeaturesEmbedding(field_dims, embed_dim)
         self.linear = FeaturesLinear(field_dims)
@@ -250,6 +265,10 @@ class TetrahedronFactorizationMachineModel(torch.nn.Module):
     """
 
     def __init__(self, field_dims, embed_dim):
+        """
+        fields_dim - input dimesion
+        embed_dim - embedding dimension
+        """
         super().__init__()
         self.embedding = FeaturesEmbedding(field_dims, embed_dim)
         self.linear = FeaturesLinear(field_dims)
@@ -301,6 +320,8 @@ class TetrahedronFactorizationMachineModel(torch.nn.Module):
 def bpr_loss(pos, neg):
     """
     BPR Loss
+    pos - list of scores between user and positive item
+    neg - list of scores between user and negative item
     """
     loss = -torch.mean(torch.log(torch.nn.functional.sigmoid(pos - neg)))    
     return loss
@@ -308,6 +329,9 @@ def bpr_loss(pos, neg):
 def triangle_loss(pos, neg, it):
     """
     Trianglr loss
+    pos - list of scores between user and positive item
+    neg - list of scores between user and negative item
+    it - list of scores between positive and negative items
     """
     loss = -torch.mean(torch.log(torch.nn.functional.sigmoid(pos - (neg + it))))    
     return loss
@@ -315,6 +339,13 @@ def triangle_loss(pos, neg, it):
 def tetrahedron_loss(pos, neg, it, pos_emb, neg_emb, it_emb, a, b, c, d):
     """
     Tetrahedron loss
+    pos - list of scores between user and positive item
+    neg - list of scores between user and negative item
+    it - list of scores between positive and negative items
+    pos_emb - embedding of positive item
+    neg_emb - embedding of negative item
+    it_emb = pos_emb
+    a, b, c, d: float - weights, hyperparameters
     """
     pos_zeros = get_zeroth_components(pos_emb)
     neg_zeros = get_zeroth_components(neg_emb)
@@ -330,6 +361,7 @@ def tetrahedron_loss(pos, neg, it, pos_emb, neg_emb, it_emb, a, b, c, d):
 def get_zeroth_components(feature_emb):
         '''
         compute the 0th component
+        feature_ emb - embedding dimension
         '''
         sum_of_square = torch.sum(feature_emb ** 2, dim=-1) # batch * field
         zeroth_components = torch.sqrt(sum_of_square + 1) # beta = 1
