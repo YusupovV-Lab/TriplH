@@ -98,6 +98,10 @@ def getDF(path):
     return pd.DataFrame.from_dict(df, orient='index')
 
 class Dataset_maker(torch.utils.data.Dataset):
+    """
+    convert Pandas dataset to numpy array. 
+    Similar to MovieLens20MDataset but get the dataset insted of path to it.
+    """
     def __init__(self, data):
         self.data = data
         self.items = self.data[:, :2].astype(np.int32) - 1  # -1 because ID begins from 1
@@ -125,6 +129,9 @@ def rr(
 ) -> float:
     '''
     Reciprocal Rank (RR) metric
+    gt_items - ground truth, correct
+    predictions - predictions
+    topn - k in RR@k
     '''
     if topn is None:
         topn = len(predictions)
@@ -145,6 +152,9 @@ def hr(
 ) -> float:
     '''
     Hit Rate (HR) metric
+    gt_items - ground truth, correct
+    predictions - predictions
+    topn - k in HR@k
     '''
     if topn is None:
         topn = len(predictions)
@@ -161,6 +171,9 @@ def ndcg(
 ) -> float:
     '''
     Normalized Discounted Cumulative Gain (NDCG) metric
+    gt_items - ground truth, correct
+    predictions - predictions
+    topn - k in NDCG@k
     '''
     if topn is None:
         topn = len(predictions)
@@ -182,6 +195,11 @@ def ndcg(
     return ndcg_score
 
 def metrics(targets, preds):
+    """
+    Print all metrics
+    targets - ground truth
+    preds - predictions
+    """
     ndcg1 = []
     ndcg5 = []
     ndcg10 = []
@@ -217,6 +235,8 @@ def convert(data, target, prediction):
     '''
     Converts list of targets and predictions to the dict with target and
     prediction for each user.
+    targets - ground truth
+    predictions - predictions
     '''
     preds = dict()
     targets = dict()
@@ -237,6 +257,9 @@ def convert(data, target, prediction):
 def sampler_neg(field_embs, items_emb, n):
     """
     Negative sampler
+    field_embs - user embeddings
+    items_emb - item embeddings
+    n - unnesessary
     """
     matrix = torch.mm(torch.sqrt(1 + torch.sum(field_embs ** 2, dim = 1)).unsqueeze(1), torch.sqrt(1 + torch.sum(items_emb ** 2, dim = 1)).unsqueeze(0)) - torch.mm(field_embs, items_emb.transpose(0, 1))
     n_items = items_emb.shape[0]
